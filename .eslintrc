@@ -1,0 +1,13 @@
+{
+  "extends": "airbnb-base",
+  "rules": {
+    "no-underscore-dangle":"off",
+    "no-unused-vars": "warn",
+    "semi": "warn",
+    "eol-last": "warn",
+    "no-console": "off",
+    "import/no-extraneous-dependencies": "off",
+    "comma-dangle": "off",
+    "object-curly-spacing": "warn"
+  }
+}
