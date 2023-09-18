@@ -31,7 +31,7 @@ module.exports.getUser = async (req, res) => {
     }
   } catch (e) {
     if (e.name === 'CastError') {
-      res.status(404).send({ message: 'Пользователь не найден' });
+      res.status(400).send({ message: 'Пользователь не найден' });
     } else {
       res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
     }
@@ -45,6 +45,9 @@ module.exports.getUsers = (req, res) => {
 };
 
 module.exports.updateProfile = async (req, res) => {
+  function checkValidation({ name, about }) {
+    return (name.length <= 30 && name.length >= 2) && (about.length <= 30 && about.length >= 2);
+  }
   try {
     const { name, about, avatar } = req.body;
     let user = await User.findByIdAndUpdate(req.user._id, {
@@ -57,7 +60,7 @@ module.exports.updateProfile = async (req, res) => {
       about
     });
     // 2 раза, чтобы вернуть обновлённые данные, а этот метод возвращает данные до изменения
-    if (user && user.name.length < 30 && user.about.length < 30) {
+    if (checkValidation()) {
       res.send(user);
     } else if (!user) {
       const err = new Error();
