@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const userRouter = require('./routers/users');
 const cardRouter = require('./routers/cards');
+const { NOT_FOUND_CODE } = require('./data/responseStatuses')
 
 const { PORT = 3000 } = process.env;
 
@@ -22,6 +23,9 @@ app.use((req, res, next) => {
 
 app.use('/users', userRouter);
 app.use('/cards', cardRouter);
+app.use('*', (req, res) => {
+  res.status(NOT_FOUND_CODE).send({ message: 'Данная страница не найдена' })
+})
 
 app.listen(PORT, () => {
   console.log('Полёт нормальный');
