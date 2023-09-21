@@ -1,4 +1,13 @@
+const { ValidationError, CastError } = require('mongoose').Error;
+
 const User = require('../models/user');
+
+const {
+  BAD_REQUEST_CODE,
+  NOT_FOUND_CODE,
+  SERVER_ERROR_CODE,
+  SUCCES_CREATED_CODE
+} = require('../data/responseStatuses');
 
 module.exports.createUser = (req, res) => {
   const { name, about, avatar } = req.body;
@@ -8,77 +17,53 @@ module.exports.createUser = (req, res) => {
     about,
     avatar
   })
-    .then((user) => res.send(user))
+    .then((user) => res.status(SUCCES_CREATED_CODE).send(user))
     .catch((e) => {
-      if (e.name === 'ValidationError') {
-        res.status(400).send({ message: 'Ошибка валидации, проверьте корректность данных' });
+      if (e instanceof ValidationError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Ошибка валидации, проверьте корректность данных' });
       } else {
-        res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
       }
     });
 };
 
-module.exports.getUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.userId);
-
-    if (user) {
-      res.send(user);
-    } else {
-      const err = new Error();
-      err.name = 'CastError';
-      throw err;
-    }
-  } catch (e) {
-    if (e.name === 'CastError') {
-      res.status(400).send({ message: 'Пользователь не найден' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
-    }
-  }
+module.exports.getUser = (req, res) => {
+  User.findById(req.params.userId)
+    .then((user) => {
+      if (user) {
+        res.send(user);
+      } else {
+        res.status(NOT_FOUND_CODE).send({ message: 'Такого пользователя не существует' });
+      }
+    })
+    .catch((e) => {
+      if (e instanceof CastError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Передан некорректный id пользователя' });
+      } else {
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
+      }
+    });
 };
 
 module.exports.getUsers = (req, res) => {
   User.find({})
     .then((users) => res.send(users))
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка на стороне сервера' }));
+    .catch(() => res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' }));
 };
 
-module.exports.updateProfile = async (req, res) => {
-  function checkValidation({ name, about }) {
-    return (name.length <= 30 && name.length >= 2) && (about.length <= 30 && about.length >= 2);
-  }
-  try {
-    const { name, about, avatar } = req.body;
-    let user = await User.findByIdAndUpdate(req.user._id, {
-      name,
-      about,
-      avatar
+module.exports.updateProfile = (req, res) => {
+  const { name, about, avatar } = req.body;
+
+  User.findByIdAndUpdate(req.user._id, { name, about, avatar }, {
+    new: true,
+    runValidators: true
+  })
+    .then((user) => res.send(user))
+    .catch((e) => {
+      if (e instanceof ValidationError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Ошибка валидации, проверьте корректность данных' });
+      } else {
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
+      }
     });
-    user = await User.findByIdAndUpdate(req.user._id, {
-      name,
-      about
-    });
-    // 2 раза, чтобы вернуть обновлённые данные, а этот метод возвращает данные до изменения
-    if (checkValidation()) {
-      res.send(user);
-    } else if (!user) {
-      const err = new Error();
-      err.name = 'CastError';
-      throw err;
-    } else {
-      const err = new Error();
-      err.name = 'ValidationError';
-      throw err;
-    }
-  } catch (e) {
-    if (e.name === 'CastError') {
-      res.status(404).send({ message: 'Пользователь не найден' });
-    } else if (e.name === 'ValidationError') {
-      res.status(400).send({ message: 'Ошибка валидации, проверьте введённые данные' });
-    } else {
-      console.log(e);
-      res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
-    }
-  }
 };

@@ -1,29 +1,19 @@
+const { ValidationError, CastError } = require('mongoose').Error;
+
 const Card = require('../models/card');
+
+const {
+  BAD_REQUEST_CODE,
+  NOT_FOUND_CODE,
+  SERVER_ERROR_CODE,
+  SUCCES_CREATED_CODE
+} = require('../data/responseStatuses');
 
 module.exports.getCards = (req, res) => {
   Card.find({})
+    .populate(['owner', 'likes'])
     .then((cards) => res.send(cards))
-    .catch(() => res.status(500).send({ message: 'Произошла ошибка на стороне сервера' }));
-};
-
-module.exports.getCard = async (req, res) => {
-  try {
-    const card = await Card.findById(req.params.cardId);
-
-    if (card) {
-      res.send(card);
-    } else {
-      const err = new Error();
-      err.name = 'CastError';
-      throw err;
-    }
-  } catch (e) {
-    if (e.name === 'CastError') {
-      res.status(404).send({ message: 'Карточка не найдена' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
-    }
-  }
+    .catch(() => res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' }));
 };
 
 module.exports.createCard = (req, res) => {
@@ -34,84 +24,74 @@ module.exports.createCard = (req, res) => {
     link,
     owner: req.user._id
   })
-    .then((card) => res.send(card))
+    .then((card) => res.status(SUCCES_CREATED_CODE).send(card))
     .catch((e) => {
-      if (e.name === 'ValidationError') {
-        res.status(400).send({ message: 'Ошибка валидации, проверьте корректность данных' });
+      if (e instanceof ValidationError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Ошибка валидации, проверьте корректность данных' });
       } else {
-        res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
       }
     });
 };
 
-module.exports.deleteCard = async (req, res) => {
-  try {
-    const card = await Card.findByIdAndRemove(req.params.cardId);
-
-    if (card) {
-      res.send(card);
-    } else {
-      const err = new Error();
-      err.name = 'CastError';
-      throw err;
-    }
-  } catch (e) {
-    if (e.name === 'CastError') {
-      res.status(404).send({ message: 'Карточка не найдена' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
-    }
-  }
+module.exports.deleteCard = (req, res) => {
+  Card.findByIdAndRemove(req.params.cardId)
+    .then((card) => {
+      if (card) {
+        res.send(card);
+      } else {
+        res.status(NOT_FOUND_CODE).send({ message: 'Такой карточки не существует' });
+      }
+    })
+    .catch((e) => {
+      if (e instanceof CastError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Ошибка валидации, проверьте введённые данные' });
+      } else {
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
+      }
+    });
 };
 
-module.exports.likeCard = async (req, res) => {
-  try {
-    const card = await Card.findByIdAndUpdate(
-      req.params.cardId,
-      {
-        $addToSet: { likes: req.user._id }
-      },
-      { new: true }
-    );
-
-    if (card) {
-      res.send(card);
-    } else {
-      const err = new Error();
-      err.name = 'CastError';
-      throw err;
-    }
-  } catch (e) {
-    if (e.name === 'CastError') {
-      res.status(404).send({ message: 'Карточка не найдена' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
-    }
-  }
+module.exports.likeCard = (req, res) => {
+  Card.findByIdAndUpdate(
+    req.params.cardId,
+    { $addToSet: { likes: req.user._id } },
+    { new: true }
+  )
+    .then((card) => {
+      if (card) {
+        res.send(card);
+      } else {
+        res.status(NOT_FOUND_CODE).send({ message: 'Такой карточки не существует' });
+      }
+    })
+    .catch((e) => {
+      if (e instanceof CastError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Переданы некорректные данные' });
+      } else {
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
+      }
+    });
 };
 
-module.exports.dislikeCard = async (req, res) => {
-  try {
-    const card = await Card.findByIdAndUpdate(
-      req.params.cardId,
-      {
-        $pull: { likes: req.user._id }
-      },
-      { new: true }
-    );
-
-    if (card) {
-      res.send(card);
-    } else {
-      const err = new Error();
-      err.name = 'CastError';
-      throw err;
-    }
-  } catch (e) {
-    if (e.name === 'CastError') {
-      res.status(404).send({ message: 'Карточка не найдена' });
-    } else {
-      res.status(500).send({ message: 'Произошла ошибка на стороне сервера' });
-    }
-  }
+module.exports.dislikeCard = (req, res) => {
+  Card.findByIdAndUpdate(
+    req.params.cardId,
+    { $pull: { likes: req.user._id } },
+    { new: true }
+  )
+    .then((card) => {
+      if (card) {
+        res.send(card);
+      } else {
+        res.status(NOT_FOUND_CODE).send({ message: 'Такой карточки не существует' });
+      }
+    })
+    .catch((e) => {
+      if (e instanceof CastError) {
+        res.status(BAD_REQUEST_CODE).send({ message: 'Переданы некорректные данные' });
+      } else {
+        res.status(SERVER_ERROR_CODE).send({ message: 'Произошла ошибка на стороне сервера' });
+      }
+    });
 };
