@@ -20,6 +20,11 @@ const cardSchema = mongoose.Schema({
   link: {
     type: String,
     required: true,
+    validate: {
+      validator(v) {
+        return /https?:\/\/(www\.)?[\w-]+\.\w+(\/.+)?/i.test(v);
+      },
+    },
   },
   createdAt: {
     type: Date,
