@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     minlength: 2,
     maxlength: 30,
-    about: 'Исследователь',
+    default: 'Исследователь',
   },
   avatar: {
     type: String,
